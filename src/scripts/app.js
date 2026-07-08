@@ -24,6 +24,12 @@ const plan = calculatePlan(userProfile);
 let selectedTaste = localStorage.getItem(tasteStoreKey) || "chinese";
 let selectedMealMode = localStorage.getItem(mealModeStoreKey) || "twoMeal";
 
+if ("serviceWorker" in navigator) {
+  navigator.serviceWorker.getRegistrations().then((registrations) => {
+    registrations.forEach((registration) => registration.unregister());
+  });
+}
+
 function setText(selector, value) {
   const element = document.querySelector(selector);
   if (element) {

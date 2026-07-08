@@ -2,7 +2,7 @@
   "name": "轻盈计划",
   "short_name": "轻盈计划",
   "description": "个人减脂管理网页版小程序原型",
-  "start_url": "/",
+  "start_url": "/index.html",
   "display": "standalone",
   "background_color": "#f7f3ef",
   "theme_color": "#f7f3ef",
