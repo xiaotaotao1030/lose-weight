@@ -22,117 +22,154 @@
 
       <main class="page-stack">
         <section class="page is-active" data-page="today">
-          <div class="summary-card">
-            <div>
-              <span class="label">当前体重</span>
-              <strong><span data-current-weight>62</span> kg</strong>
-            </div>
-            <div>
-              <span class="label">目标体重</span>
-              <strong><span data-target-weight>50</span> kg</strong>
-            </div>
-          </div>
-
-          <section class="card">
+          <section class="card dashboard-hero">
             <div class="section-title">
-              <h2>身体指标</h2>
-              <span data-goal-label>90 天目标</span>
+              <h2>今日减脂进度</h2>
+              <span><span data-dashboard-calorie-percent>0</span>%</span>
             </div>
-            <div class="metric-grid">
+            <div class="dashboard-calories">
               <div>
-                <span class="label">BMI</span>
-                <strong data-bmi>--</strong>
+                <span class="label">已摄入</span>
+                <strong><span data-dashboard-calories-in>0</span></strong>
+                <small>kcal</small>
               </div>
               <div>
-                <span class="label">BMR</span>
-                <strong><span data-bmr>--</span> kcal</strong>
+                <span class="label">今日目标</span>
+                <strong><span data-dashboard-calories-goal>--</span></strong>
               </div>
               <div>
-                <span class="label">建议摄入</span>
-                <strong><span data-calories>--</span> kcal</strong>
-              </div>
-              <div>
-                <span class="label">每日缺口</span>
-                <strong><span data-deficit>--</span> kcal</strong>
+                <span class="label">剩余热量</span>
+                <strong><span data-dashboard-calories-left>--</span></strong>
               </div>
             </div>
-            <p class="notice" data-goal-notice></p>
+            <div class="progress-track">
+              <span data-dashboard-calorie-progress></span>
+            </div>
+            <p class="notice">当前体重 <span data-current-weight>62</span> kg，目标体重 <span data-target-weight>50</span> kg。</p>
           </section>
 
           <section class="card">
             <div class="section-title">
-              <h2>今日任务</h2>
-              <span>0 / 4</span>
+              <h2>三大营养素</h2>
+              <span>今日累计</span>
             </div>
-            <ul class="check-list">
-              <li><button type="button" class="check-dot"></button>喝水 2L</li>
-              <li><button type="button" class="check-dot"></button>完成三餐计划</li>
-              <li><button type="button" class="check-dot"></button>运动 30 分钟</li>
-              <li><button type="button" class="check-dot"></button>记录今日体重</li>
-            </ul>
+            <div class="macro-dashboard">
+              <article>
+                <div>
+                  <span class="label">蛋白质</span>
+                  <strong><span data-dashboard-protein-in>0</span>g / <span data-dashboard-protein-goal>--</span>g</strong>
+                </div>
+                <div class="progress-track"><span data-dashboard-protein-progress></span></div>
+              </article>
+              <article>
+                <div>
+                  <span class="label">碳水</span>
+                  <strong><span data-dashboard-carb-in>0</span>g / <span data-dashboard-carb-goal>--</span>g</strong>
+                </div>
+                <div class="progress-track"><span data-dashboard-carb-progress></span></div>
+              </article>
+              <article>
+                <div>
+                  <span class="label">脂肪</span>
+                  <strong><span data-dashboard-fat-in>0</span>g / <span data-dashboard-fat-goal>--</span>g</strong>
+                </div>
+                <div class="progress-track"><span data-dashboard-fat-progress></span></div>
+              </article>
+            </div>
           </section>
 
           <section class="card">
             <div class="section-title">
-              <h2>每日饮食计划</h2>
-              <span><span data-meal-calories>--</span> kcal</span>
+              <h2>今日饮食时间轴</h2>
+              <span data-dashboard-meal-count>0 餐</span>
             </div>
-            <div class="macro-row">
-              <span>蛋白质 <strong data-protein>--</strong>g</span>
-              <span>碳水 <strong data-carb>--</strong>g</span>
-              <span>脂肪 <strong data-fat>--</strong>g</span>
-            </div>
-            <div class="taste-panel">
-              <div class="section-title">
-                <h3>计划模式</h3>
-                <span data-meal-mode-name>两餐制版</span>
-              </div>
-              <div class="taste-options" data-meal-mode-options></div>
-            </div>
-            <p class="notice" data-meal-mode-notice></p>
-            <div class="taste-panel">
-              <div class="section-title">
-                <h3>口味偏好</h3>
-                <span data-taste-name>中式家常</span>
-              </div>
-              <div class="taste-options" data-taste-options></div>
-            </div>
-            <div class="meal-list" data-meal-plan></div>
+            <div class="meal-timeline" data-dashboard-meal-timeline></div>
           </section>
 
           <section class="card">
             <div class="section-title">
-              <h2>饮食偏好</h2>
-              <span>已应用</span>
+              <h2>今日状态</h2>
+              <span><span data-dashboard-completion>0</span>% 完成</span>
             </div>
-            <div class="tag-list">
-              <span>虾仁</span>
-              <span>鸡腿</span>
-              <span>牛排</span>
-              <span>鸡蛋</span>
-              <span>米饭</span>
-              <span>面条</span>
+            <div class="status-grid">
+              <article>
+                <span class="label">运动</span>
+                <strong data-dashboard-exercise>未记录</strong>
+              </article>
+              <article>
+                <span class="label">排便</span>
+                <strong data-dashboard-bowel>未记录</strong>
+              </article>
+              <article>
+                <span class="label">体重</span>
+                <strong><span data-dashboard-weight>--</span> kg</strong>
+              </article>
+              <article>
+                <span class="label">热量记录</span>
+                <strong data-dashboard-record-status>待记录</strong>
+              </article>
             </div>
-            <p class="body-text">已避开卤牛肉和燕麦；饮品按无糖柠檬水或无糖油柑水处理。</p>
           </section>
 
-          <section class="card">
+          <section class="card ai-summary-card">
             <div class="section-title">
-              <h2>运动计划</h2>
-              <span>轻中等</span>
+              <h2>AI 每日总结</h2>
+              <span data-dashboard-summary-score>--</span>
             </div>
-            <p class="body-text">快走 30 分钟 + 拉伸 10 分钟</p>
+            <div class="summary-list">
+              <article>
+                <span class="label">完成情况</span>
+                <p data-dashboard-summary-completion>记录饮食后生成今日总结。</p>
+              </article>
+              <article>
+                <span class="label">营养评价</span>
+                <p data-dashboard-summary-nutrition>暂无营养数据。</p>
+              </article>
+              <article>
+                <span class="label">改进建议</span>
+                <p data-dashboard-summary-advice>先记录今天吃了什么，系统会给出温和建议。</p>
+              </article>
+            </div>
           </section>
         </section>
 
         <section class="page" data-page="record">
           <section class="card">
             <div class="section-title">
+              <h2>今天吃了什么？</h2>
+              <span>AI分析</span>
+            </div>
+            <label class="form-row">
+              <span>输入饮食内容</span>
+              <textarea rows="4" placeholder="例如：今天吃了两个鸡蛋，一碗牛肉面" data-food-text-input></textarea>
+            </label>
+            <button class="primary-button" type="button" data-analyze-food-text>分析这餐</button>
+            <div class="ai-result" data-text-food-result hidden>
+              <div class="section-title">
+                <h3>饮食分析结果</h3>
+                <span><strong data-text-food-calories>0</strong> kcal</span>
+              </div>
+              <div class="nutrition-row">
+                <span>蛋白质 <strong data-text-food-protein>0</strong>g</span>
+                <span>碳水 <strong data-text-food-carb>0</strong>g</span>
+                <span>脂肪 <strong data-text-food-fat>0</strong>g</span>
+              </div>
+              <div class="meal-block">
+                <h4>识别食物</h4>
+                <ul data-text-food-items></ul>
+              </div>
+              <button class="primary-button" type="button" data-add-text-food-record>加入今日记录</button>
+            </div>
+            <p class="notice" data-text-food-status>联网 GPT 会分析你的饮食描述，并估算热量和三大营养素。</p>
+          </section>
+
+          <section class="card">
+            <div class="section-title">
               <h2>AI 饮食识别</h2>
               <span>原型版</span>
             </div>
             <label class="upload-box" for="food-photo">
-              <input id="food-photo" type="file" accept="image/*" capture="environment" />
+              <input id="food-photo" type="file" accept="image/*" />
               <span>拍摄或上传食物照片</span>
               <small>识别食物种类，并估算热量</small>
             </label>
@@ -142,9 +179,16 @@
                 <h3 data-food-name>--</h3>
                 <span><strong data-food-calories>--</strong> kcal</span>
               </div>
+              <div class="nutrition-row">
+                <span>蛋白质 <strong data-food-protein>--</strong>g</span>
+                <span>碳水 <strong data-food-carb>--</strong>g</span>
+                <span>脂肪 <strong data-food-fat>--</strong>g</span>
+              </div>
               <p class="body-text">识别食物：<span data-food-items>--</span></p>
+              <p class="body-text">预计重量：<span data-food-weight>--</span></p>
               <p class="body-text">可信度：<span data-food-confidence>--</span>%</p>
               <p class="notice" data-food-note></p>
+              <button class="primary-button" type="button" data-add-photo-food-record>加入今日记录</button>
             </div>
             <p class="notice">当前为前端原型模拟识别。真实上线时需要通过后端调用视觉 AI，避免密钥暴露在前端。</p>
           </section>
@@ -277,7 +321,7 @@
     <script src="./src/scripts/meal-plan.js"></script>
     <script src="./src/scripts/food-ai.js"></script>
     <script src="./src/scripts/body-checkin.js"></script>
-    <script src="./src/scripts/daily-record.js"></script>
+    <script src="./src/scripts/storage.js"></script>
     <script src="./src/scripts/app.js"></script>
   </body>
 </html>

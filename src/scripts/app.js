@@ -4,6 +4,10 @@ const checkButtons = document.querySelectorAll(".check-dot");
 const foodPhotoInput = document.querySelector("#food-photo");
 const foodPreview = document.querySelector("[data-food-preview]");
 const aiResult = document.querySelector("[data-ai-result]");
+const foodTextInput = document.querySelector("[data-food-text-input]");
+const analyzeFoodTextButton = document.querySelector("[data-analyze-food-text]");
+const addTextFoodRecordButton = document.querySelector("[data-add-text-food-record]");
+const addPhotoFoodRecordButton = document.querySelector("[data-add-photo-food-record]");
 const bodyDateInput = document.querySelector("[data-body-date]");
 const bodyPhotoInput = document.querySelector("#body-photo");
 const bodyPreview = document.querySelector("[data-body-preview]");
@@ -20,6 +24,9 @@ const mealModeOptionsContainer = document.querySelector("[data-meal-mode-options
 const tasteStoreKey = "light-plan-taste-preference";
 const mealModeStoreKey = "light-plan-meal-mode";
 let bodyPhotoData = "";
+let pendingTextFoodAnalysis = null;
+let pendingPhotoFoodAnalysis = null;
+let pendingFoodPhotoData = "";
 const plan = calculatePlan(userProfile);
 let selectedTaste = localStorage.getItem(tasteStoreKey) || "chinese";
 let selectedMealMode = localStorage.getItem(mealModeStoreKey) || "twoMeal";
@@ -50,6 +57,256 @@ setText(
     ? `3 个月减 12kg 偏快，原目标需要每日约 ${plan.targetDailyDeficit} kcal 缺口。当前算法先按每日 ${plan.dailyDeficit} kcal 缺口计算，预计 90 天到 ${plan.expectedWeightKg}kg 左右。`
     : "当前目标节奏合理，可以按计划执行并根据体重变化微调。"
 );
+
+function setProgress(selector, value, target) {
+  const element = document.querySelector(selector);
+  if (!element) {
+    return;
+  }
+
+  const percent = target > 0 ? Math.min((value / target) * 100, 100) : 0;
+  element.style.width = `${Math.round(percent)}%`;
+}
+
+function formatExercise(exercise) {
+  if (!exercise || exercise.type === "none") {
+    return "未运动";
+  }
+
+  const typeMap = {
+    walk: "步行",
+    run: "跑步",
+    gym: "健身",
+    other: "其他",
+  };
+  return `${typeMap[exercise.type] || exercise.type} ${exercise.minutes || 0} 分钟`;
+}
+
+function formatBowel(bowel) {
+  if (!bowel || bowel.hasBowel === null) {
+    return "未记录";
+  }
+
+  return bowel.hasBowel ? bowel.status || "有" : "无";
+}
+
+function calculateCompletion(record) {
+  const items = [
+    record.nutritionTotals.calories > 0,
+    record.weight.valueKg,
+    record.exercise.type !== "none" || record.exercise.note,
+    record.bowel.hasBowel !== null,
+  ];
+  const done = items.filter(Boolean).length;
+  return Math.round((done / items.length) * 100);
+}
+
+function getNutritionPercent(value, target) {
+  return target > 0 ? Math.round((value / target) * 100) : 0;
+}
+
+function getMealHour(time) {
+  if (!time) {
+    return 12;
+  }
+
+  const match = time.match(/(\d{1,2}):(\d{2})/);
+  if (!match) {
+    return 12;
+  }
+
+  let hour = Number(match[1]);
+  if (time.includes("下午") && hour < 12) {
+    hour += 12;
+  }
+  if (time.includes("上午") && hour === 12) {
+    hour = 0;
+  }
+  return hour;
+}
+
+function getMealSlot(time) {
+  const hour = getMealHour(time);
+  if (hour < 11) {
+    return "breakfast";
+  }
+  if (hour < 16) {
+    return "lunch";
+  }
+  return "dinner";
+}
+
+function formatFoodNames(foods) {
+  if (!foods || foods.length === 0) {
+    return "未填写食物";
+  }
+
+  return foods.map((food) => `${food.name}${food.amount ? ` ${food.amount}` : ""}`).join("、");
+}
+
+function renderMealTimeline(record) {
+  const timeline = document.querySelector("[data-dashboard-meal-timeline]");
+  if (!timeline) {
+    return;
+  }
+
+  const slots = [
+    { id: "breakfast", name: "早餐" },
+    { id: "lunch", name: "午餐" },
+    { id: "dinner", name: "晚餐" },
+  ];
+  const entries = [];
+  record.meals.forEach((meal) => {
+    if (meal.foods?.some((food) => food.mealTime)) {
+      meal.foods.forEach((food) => {
+        entries.push({
+          id: `${meal.id}-${food.name}`,
+          time: meal.time,
+          mealTime: food.mealTime,
+          foods: [food],
+          nutrition: food.nutrition || emptyNutrition(),
+        });
+      });
+      return;
+    }
+    entries.push({ ...meal, type: "meal" });
+  });
+  record.foodPhotos.forEach((meal) => {
+    entries.push({ ...meal, type: "photo" });
+  });
+  const legacyFood = record.legacy?.food
+    ? [
+        {
+          id: "legacy-food",
+          time: "",
+          type: "legacy",
+          foods: [{ name: record.legacy.food, amount: "" }],
+          nutrition: emptyNutrition(),
+        },
+      ]
+    : [];
+  const allEntries = [...entries, ...legacyFood];
+
+  setText("[data-dashboard-meal-count]", `${allEntries.length} 餐`);
+  timeline.innerHTML = slots
+    .map((slot) => {
+      const slotEntries = allEntries.filter((entry) => {
+        if (entry.type === "legacy") {
+          return slot.id === "breakfast";
+        }
+        if (entry.mealTime) {
+          return entry.mealTime === slot.name;
+        }
+        return getMealSlot(entry.time) === slot.id;
+      });
+      const content =
+        slotEntries.length > 0
+          ? slotEntries
+              .map((entry) => {
+                const nutrition = entry.nutrition || emptyNutrition();
+                return `
+                  <div class="timeline-food">
+                    <strong>${formatFoodNames(entry.foods)}</strong>
+                    <span>${Math.round(nutrition.calories)} kcal · 蛋白质 ${Math.round(nutrition.proteinG)}g · 碳水 ${Math.round(nutrition.carbG)}g · 脂肪 ${Math.round(nutrition.fatG)}g</span>
+                  </div>
+                `;
+              })
+              .join("")
+          : `<p class="timeline-empty">还没有记录</p>`;
+
+      return `
+        <article class="timeline-item">
+          <div class="timeline-dot"></div>
+          <div>
+            <h3>${slot.name}</h3>
+            ${content}
+          </div>
+        </article>
+      `;
+    })
+    .join("");
+}
+
+function buildDailySummary(record, nutrition, calorieGoal) {
+  const caloriePercent = getNutritionPercent(nutrition.calories, calorieGoal);
+  const proteinPercent = getNutritionPercent(nutrition.proteinG, plan.proteinG);
+  const carbPercent = getNutritionPercent(nutrition.carbG, plan.carbG);
+  const fatPercent = getNutritionPercent(nutrition.fatG, plan.fatG);
+  const hasFood = nutrition.calories > 0;
+  const score = Math.min(
+    100,
+    Math.round(
+      (Math.min(caloriePercent, 100) + Math.min(proteinPercent, 100) + calculateCompletion(record)) / 3
+    )
+  );
+
+  if (!hasFood) {
+    return {
+      score: "--",
+      completion: "今天还没有饮食记录，先记录一餐就能看到完整反馈。",
+      nutrition: "暂无营养数据。",
+      advice: "可以从最容易的一餐开始，例如输入“两个鸡蛋、一杯牛奶”。",
+    };
+  }
+
+  let nutritionText = "整体记录稳定。";
+  if (proteinPercent < 80) {
+    nutritionText = `蛋白质完成 ${proteinPercent}%，距离目标还差一些。`;
+  } else if (fatPercent > 120) {
+    nutritionText = "脂肪摄入偏高，下一餐可以选择更清爽的做法。";
+  } else if (carbPercent < 60) {
+    nutritionText = "碳水偏低，适量米饭、面条或水果会更容易坚持。";
+  }
+
+  let advice = "继续保持记录，晚些时候根据剩余热量补足缺口。";
+  if (caloriePercent >= 95) {
+    advice = "今天热量接近目标，后续以低热量饮品或蔬菜为主。";
+  } else if (proteinPercent < 80) {
+    advice = "下一餐优先补充鸡蛋、虾仁、鸡腿、牛排或无糖酸奶。";
+  }
+
+  return {
+    score: `${score}分`,
+    completion: `今日热量完成 ${caloriePercent}%，已记录 ${record.meals.length + record.foodPhotos.length} 餐。`,
+    nutrition: nutritionText,
+    advice,
+  };
+}
+
+function renderDashboard() {
+  const todayRecord = findDailyRecord(todayText()) || createDailyRecord(todayText());
+  const nutrition = todayRecord.nutritionTotals || emptyNutrition();
+  const calorieGoal = plan.calories;
+  const caloriesLeft = Math.max(calorieGoal - nutrition.calories, 0);
+  const caloriePercent = getNutritionPercent(nutrition.calories, calorieGoal);
+  const summary = buildDailySummary(todayRecord, nutrition, calorieGoal);
+
+  setText("[data-dashboard-calories-goal]", calorieGoal);
+  setText("[data-dashboard-calories-in]", Math.round(nutrition.calories));
+  setText("[data-dashboard-calories-left]", Math.round(caloriesLeft));
+  setText("[data-dashboard-calorie-percent]", caloriePercent);
+  setText("[data-dashboard-protein-in]", Math.round(nutrition.proteinG));
+  setText("[data-dashboard-protein-goal]", plan.proteinG);
+  setText("[data-dashboard-carb-in]", Math.round(nutrition.carbG));
+  setText("[data-dashboard-carb-goal]", plan.carbG);
+  setText("[data-dashboard-fat-in]", Math.round(nutrition.fatG));
+  setText("[data-dashboard-fat-goal]", plan.fatG);
+  setText("[data-dashboard-exercise]", formatExercise(todayRecord.exercise));
+  setText("[data-dashboard-bowel]", formatBowel(todayRecord.bowel));
+  setText("[data-dashboard-weight]", todayRecord.weight.valueKg || userProfile.currentWeightKg);
+  setText("[data-dashboard-completion]", calculateCompletion(todayRecord));
+  setText("[data-dashboard-record-status]", nutrition.calories > 0 ? "已记录饮食" : "待记录饮食");
+  setText("[data-dashboard-summary-score]", summary.score);
+  setText("[data-dashboard-summary-completion]", summary.completion);
+  setText("[data-dashboard-summary-nutrition]", summary.nutrition);
+  setText("[data-dashboard-summary-advice]", summary.advice);
+
+  setProgress("[data-dashboard-calorie-progress]", nutrition.calories, calorieGoal);
+  setProgress("[data-dashboard-protein-progress]", nutrition.proteinG, plan.proteinG);
+  setProgress("[data-dashboard-carb-progress]", nutrition.carbG, plan.carbG);
+  setProgress("[data-dashboard-fat-progress]", nutrition.fatG, plan.fatG);
+  renderMealTimeline(todayRecord);
+}
 
 function todayText() {
   const now = new Date();
@@ -223,6 +480,7 @@ if (recordDateInput) {
 }
 
 renderBodyReport();
+renderDashboard();
 renderMealModeOptions();
 renderTasteOptions();
 renderMealPlan();
@@ -272,6 +530,95 @@ if (mealModeOptionsContainer) {
   });
 }
 
+function renderTextFoodAnalysis(result) {
+  const resultPanel = document.querySelector("[data-text-food-result]");
+  const itemList = document.querySelector("[data-text-food-items]");
+  if (!resultPanel || !itemList) {
+    return;
+  }
+
+  resultPanel.hidden = false;
+  setText("[data-text-food-calories]", Math.round(result.nutrition.calories));
+  setText("[data-text-food-protein]", Math.round(result.nutrition.proteinG));
+  setText("[data-text-food-carb]", Math.round(result.nutrition.carbG));
+  setText("[data-text-food-fat]", Math.round(result.nutrition.fatG));
+  setText("[data-text-food-status]", result.note);
+  const mealOrder = ["早餐", "午餐", "晚餐", "零食", "饮品"];
+  itemList.innerHTML = mealOrder
+    .map((mealName) => {
+      const foods = result.mealItems.filter((food) => food.mealTime === mealName);
+      if (foods.length === 0 && !["早餐", "午餐", "晚餐"].includes(mealName)) {
+        return "";
+      }
+
+      return `
+        <li class="text-meal-group">
+          <h5>${mealName}</h5>
+          <div class="text-food-list">
+            ${
+              foods.length > 0
+                ? foods
+                    .map(
+                      (food) => `
+                  <article class="text-food-item">
+                    <strong>${food.name}</strong>
+                    <span>${food.quantity} · ${food.weight} · ${food.estimateNote || "估算值，可修改"}</span>
+                    <span>${food.calories} kcal · 蛋白质 ${food.protein}g · 碳水 ${food.carbs}g · 脂肪 ${food.fat}g</span>
+                  </article>
+                `
+                    )
+                    .join("")
+                : `<article class="text-food-item"><strong>无</strong><span>本餐未记录食物</span></article>`
+            }
+          </div>
+        </li>
+      `;
+    })
+    .join("");
+}
+
+if (analyzeFoodTextButton) {
+  analyzeFoodTextButton.addEventListener("click", async () => {
+    const input = foodTextInput.value.trim();
+    if (!input) {
+      setText("[data-text-food-status]", "请先输入今天吃了什么。");
+      return;
+    }
+
+    analyzeFoodTextButton.disabled = true;
+    setText("[data-text-food-status]", "正在联网分析饮食内容...");
+
+    try {
+      pendingTextFoodAnalysis = await analyzeFoodTextOnline(input);
+      renderTextFoodAnalysis(pendingTextFoodAnalysis);
+    } catch (error) {
+      pendingTextFoodAnalysis = null;
+      setText("[data-text-food-status]", `${error.message}。请确认已部署到 Vercel，并配置 OPENAI_API_KEY。`);
+    } finally {
+      analyzeFoodTextButton.disabled = false;
+    }
+  });
+}
+
+if (addTextFoodRecordButton) {
+  addTextFoodRecordButton.addEventListener("click", () => {
+    if (!pendingTextFoodAnalysis || pendingTextFoodAnalysis.mealItems.length === 0) {
+      setText("[data-text-food-status]", "没有可加入的分析结果。");
+      return;
+    }
+
+    addMealEntry(todayText(), {
+      time: new Date().toLocaleTimeString("zh-CN", { hour: "2-digit", minute: "2-digit" }),
+      source: "text",
+      foods: pendingTextFoodAnalysis.foods,
+      nutrition: pendingTextFoodAnalysis.nutrition,
+    });
+    setText("[data-text-food-status]", "已加入今日记录，首页 Dashboard 已更新。");
+    foodTextInput.value = "";
+    renderDashboard();
+  });
+}
+
 if (foodPhotoInput) {
   foodPhotoInput.addEventListener("change", async () => {
     const file = foodPhotoInput.files[0];
@@ -279,21 +626,61 @@ if (foodPhotoInput) {
       return;
     }
 
-    foodPreview.src = URL.createObjectURL(file);
+    pendingPhotoFoodAnalysis = null;
+    const previewUrl = URL.createObjectURL(file);
+    pendingFoodPhotoData = previewUrl;
+    foodPreview.src = previewUrl;
     foodPreview.hidden = false;
     aiResult.hidden = false;
     setText("[data-food-name]", "识别中...");
     setText("[data-food-calories]", "--");
+    setText("[data-food-protein]", "--");
+    setText("[data-food-carb]", "--");
+    setText("[data-food-fat]", "--");
     setText("[data-food-items]", "正在分析图片");
+    setText("[data-food-weight]", "--");
     setText("[data-food-confidence]", "--");
     setText("[data-food-note]", "请稍等，正在估算食物热量。");
 
+    const reader = new FileReader();
+    reader.addEventListener("load", () => {
+      pendingFoodPhotoData = reader.result;
+    });
+    reader.readAsDataURL(file);
+
     const result = await mockRecognizeFood(file);
+    pendingPhotoFoodAnalysis = result;
     setText("[data-food-name]", result.name);
-    setText("[data-food-calories]", result.calories);
+    setText("[data-food-calories]", result.nutrition.calories);
+    setText("[data-food-protein]", result.nutrition.proteinG);
+    setText("[data-food-carb]", result.nutrition.carbG);
+    setText("[data-food-fat]", result.nutrition.fatG);
     setText("[data-food-items]", result.items.join("、"));
+    setText("[data-food-weight]", result.weight);
     setText("[data-food-confidence]", result.confidence);
     setText("[data-food-note]", result.note);
+  });
+}
+
+if (addPhotoFoodRecordButton) {
+  addPhotoFoodRecordButton.addEventListener("click", () => {
+    if (!pendingPhotoFoodAnalysis) {
+      setText("[data-food-note]", "请先上传或拍摄食物照片。");
+      return;
+    }
+
+    addFoodPhotoEntry(todayText(), {
+      time: new Date().toLocaleTimeString("zh-CN", { hour: "2-digit", minute: "2-digit" }),
+      photo: pendingFoodPhotoData,
+      foods: pendingPhotoFoodAnalysis.items.map((item) => ({
+        name: item,
+        amount: pendingPhotoFoodAnalysis.weight,
+      })),
+      confidence: pendingPhotoFoodAnalysis.confidence,
+      nutrition: pendingPhotoFoodAnalysis.nutrition,
+    });
+    setText("[data-food-note]", "已加入今日记录，首页 Dashboard 已更新。");
+    renderDashboard();
   });
 }
 
@@ -347,6 +734,7 @@ if (saveDailyRecordButton) {
     setText("[data-daily-record-status]", "已保存");
     if (date === todayText()) {
       setText("[data-current-weight]", recordWeightInput.value || userProfile.currentWeightKg);
+      renderDashboard();
     }
   });
 }

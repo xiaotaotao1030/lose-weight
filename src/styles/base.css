@@ -138,6 +138,197 @@ h1 {
   font-size: 19px;
 }
 
+.calorie-status {
+  display: grid;
+  grid-template-columns: 1.4fr 1fr;
+  gap: 10px;
+  margin-bottom: 14px;
+}
+
+.dashboard-hero {
+  background: linear-gradient(135deg, #ffffff 0%, #fff7f2 100%);
+}
+
+.dashboard-calories {
+  display: grid;
+  grid-template-columns: 1.25fr 1fr 1fr;
+  gap: 10px;
+  margin-bottom: 14px;
+}
+
+.dashboard-calories div {
+  min-width: 0;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.72);
+  padding: 14px;
+}
+
+.dashboard-calories strong {
+  display: block;
+  margin-top: 8px;
+  color: var(--ink);
+  font-size: 22px;
+  line-height: 1.1;
+}
+
+.dashboard-calories div:first-child strong {
+  color: var(--primary);
+  font-size: 30px;
+}
+
+.dashboard-calories small {
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.calorie-status div,
+.status-grid article,
+.macro-dashboard article {
+  border-radius: 8px;
+  background: #fbf8f5;
+  padding: 14px;
+}
+
+.calorie-status strong {
+  display: block;
+  margin-top: 8px;
+  font-size: 24px;
+  line-height: 1.1;
+}
+
+.calorie-status small {
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.progress-track {
+  width: 100%;
+  height: 9px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: #efe5df;
+}
+
+.progress-track span {
+  display: block;
+  width: 0%;
+  height: 100%;
+  border-radius: inherit;
+  background: var(--primary);
+  transition: width 180ms ease;
+}
+
+.macro-dashboard {
+  display: grid;
+  gap: 10px;
+}
+
+.macro-dashboard article {
+  display: grid;
+  gap: 10px;
+}
+
+.macro-dashboard strong {
+  display: block;
+  margin-top: 5px;
+  font-size: 17px;
+}
+
+.status-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+
+.status-grid strong {
+  display: block;
+  margin-top: 6px;
+  font-size: 16px;
+  line-height: 1.35;
+}
+
+.meal-timeline {
+  display: grid;
+  gap: 12px;
+}
+
+.timeline-item {
+  position: relative;
+  display: grid;
+  grid-template-columns: 18px 1fr;
+  gap: 10px;
+}
+
+.timeline-item:not(:last-child)::before {
+  position: absolute;
+  top: 20px;
+  bottom: -12px;
+  left: 7px;
+  width: 1px;
+  background: #eadbd2;
+  content: "";
+}
+
+.timeline-dot {
+  position: relative;
+  z-index: 1;
+  width: 15px;
+  height: 15px;
+  margin-top: 3px;
+  border: 3px solid #fff;
+  border-radius: 999px;
+  background: var(--primary);
+  box-shadow: 0 0 0 1px #eadbd2;
+}
+
+.timeline-item h3 {
+  margin: 0 0 8px;
+  font-size: 16px;
+}
+
+.timeline-food {
+  display: grid;
+  gap: 5px;
+  margin-bottom: 8px;
+  border-radius: 8px;
+  background: #fbf8f5;
+  padding: 11px 12px;
+}
+
+.timeline-food strong {
+  font-size: 15px;
+  line-height: 1.35;
+}
+
+.timeline-food span,
+.timeline-empty {
+  color: var(--muted);
+  font-size: 13px;
+  line-height: 1.45;
+}
+
+.timeline-empty {
+  margin: 0 0 8px;
+}
+
+.summary-list {
+  display: grid;
+  gap: 10px;
+}
+
+.summary-list article {
+  border-radius: 8px;
+  background: #fbf8f5;
+  padding: 12px;
+}
+
+.summary-list p {
+  margin: 6px 0 0;
+  color: var(--ink);
+  font-size: 14px;
+  line-height: 1.55;
+}
+
 .label,
 .section-title span,
 .meal-list span {
@@ -332,6 +523,41 @@ h1 {
   color: #4a433d;
   font-size: 15px;
   line-height: 1.55;
+}
+
+.text-meal-group {
+  display: block;
+  padding-left: 0;
+}
+
+.text-meal-group h5 {
+  margin: 0 0 8px;
+  color: var(--ink);
+  font-size: 15px;
+}
+
+.text-food-list {
+  display: grid;
+  gap: 8px;
+}
+
+.text-food-item {
+  display: grid;
+  gap: 4px;
+  border-radius: 8px;
+  background: #fff;
+  padding: 10px;
+}
+
+.text-food-item strong {
+  color: var(--ink);
+  font-size: 14px;
+}
+
+.text-food-item span {
+  color: var(--muted);
+  font-size: 13px;
+  line-height: 1.45;
 }
 
 .swap-list {
@@ -641,6 +867,7 @@ h1 {
 
   .summary-card,
   .metric-grid,
+  .dashboard-calories,
   .report-card {
     grid-template-columns: 1fr;
   }
