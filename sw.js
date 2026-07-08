@@ -1,4 +1,4 @@
-const cacheName = "light-plan-v1";
+const cacheName = "light-plan-v2";
 const filesToCache = [
   "./",
   "./index.html",
@@ -9,6 +9,7 @@ const filesToCache = [
   "./src/scripts/calculator.js",
   "./src/scripts/daily-record.js",
   "./src/scripts/food-ai.js",
+  "./src/scripts/meal-plan.js",
   "./assets/app-icon.svg",
 ];
 

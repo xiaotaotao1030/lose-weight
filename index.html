@@ -74,7 +74,7 @@
 
           <section class="card">
             <div class="section-title">
-              <h2>饮食卡片</h2>
+              <h2>每日饮食计划</h2>
               <span><span data-meal-calories>--</span> kcal</span>
             </div>
             <div class="macro-row">
@@ -82,20 +82,22 @@
               <span>碳水 <strong data-carb>--</strong>g</span>
               <span>脂肪 <strong data-fat>--</strong>g</span>
             </div>
-            <div class="meal-list">
-              <article>
-                <span>早餐 08:00</span>
-                <p>鸡蛋、全麦吐司或米饭小饭团、无糖柠檬水</p>
-              </article>
-              <article>
-                <span>午餐 12:30</span>
-                <p>虾仁或鸡腿、米饭、深色蔬菜</p>
-              </article>
-              <article>
-                <span>晚餐 18:30</span>
-                <p>牛排或鸡蛋、面条半份、蔬菜</p>
-              </article>
+            <div class="taste-panel">
+              <div class="section-title">
+                <h3>计划模式</h3>
+                <span data-meal-mode-name>两餐制版</span>
+              </div>
+              <div class="taste-options" data-meal-mode-options></div>
             </div>
+            <p class="notice" data-meal-mode-notice></p>
+            <div class="taste-panel">
+              <div class="section-title">
+                <h3>口味偏好</h3>
+                <span data-taste-name>中式家常</span>
+              </div>
+              <div class="taste-options" data-taste-options></div>
+            </div>
+            <div class="meal-list" data-meal-plan></div>
           </section>
 
           <section class="card">
@@ -272,6 +274,7 @@
     </div>
 
     <script src="./src/scripts/calculator.js"></script>
+    <script src="./src/scripts/meal-plan.js"></script>
     <script src="./src/scripts/food-ai.js"></script>
     <script src="./src/scripts/body-checkin.js"></script>
     <script src="./src/scripts/daily-record.js"></script>

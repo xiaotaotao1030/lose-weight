@@ -14,8 +14,15 @@ const recordWeightInput = document.querySelector("[data-record-weight]");
 const recordFoodInput = document.querySelector("[data-record-food]");
 const recordExerciseInput = document.querySelector("[data-record-exercise]");
 const saveDailyRecordButton = document.querySelector("[data-save-daily-record]");
+const mealPlanContainer = document.querySelector("[data-meal-plan]");
+const tasteOptionsContainer = document.querySelector("[data-taste-options]");
+const mealModeOptionsContainer = document.querySelector("[data-meal-mode-options]");
+const tasteStoreKey = "light-plan-taste-preference";
+const mealModeStoreKey = "light-plan-meal-mode";
 let bodyPhotoData = "";
 const plan = calculatePlan(userProfile);
+let selectedTaste = localStorage.getItem(tasteStoreKey) || "chinese";
+let selectedMealMode = localStorage.getItem(mealModeStoreKey) || "twoMeal";
 
 if ("serviceWorker" in navigator && location.protocol.startsWith("http")) {
   navigator.serviceWorker.register("./sw.js");
@@ -34,11 +41,7 @@ setText("[data-goal-label]", `${userProfile.targetDays} 天目标`);
 setText("[data-bmi]", plan.bmi);
 setText("[data-bmr]", plan.bmr);
 setText("[data-calories]", plan.calories);
-setText("[data-meal-calories]", plan.calories);
 setText("[data-deficit]", plan.dailyDeficit);
-setText("[data-protein]", plan.proteinG);
-setText("[data-carb]", plan.carbG);
-setText("[data-fat]", plan.fatG);
 setText(
   "[data-goal-notice]",
   plan.isAggressiveGoal
@@ -98,6 +101,99 @@ function renderBodyReport(days = 30) {
   }
 }
 
+function renderMealPlan() {
+  if (!mealPlanContainer) {
+    return;
+  }
+
+  const activeTaste = tastePreferences.find((taste) => taste.id === selectedTaste) || tastePreferences[0];
+  const activeMode = mealPlanModes.find((mode) => mode.id === selectedMealMode) || mealPlanModes[0];
+  const mealPlans = {
+    standard: dailyMealPlan,
+    twoMeal: twoMealPlan,
+    lazy: lazyMealPlan,
+  };
+  const meals = mealPlans[selectedMealMode] || twoMealPlan;
+  const mealSummary = summarizeMealPlan(meals);
+
+  setText("[data-taste-name]", activeTaste.name);
+  setText("[data-meal-mode-name]", activeMode.name);
+  setText("[data-meal-mode-notice]", mealModeNotices[selectedMealMode] || mealModeNotices.twoMeal);
+  setText("[data-meal-calories]", mealSummary.calories);
+  setText("[data-protein]", mealSummary.proteinG);
+  setText("[data-carb]", mealSummary.carbG);
+  setText("[data-fat]", mealSummary.fatG);
+
+  mealPlanContainer.innerHTML = meals
+    .map(
+      (meal) => `
+        <article class="meal-card">
+          <div class="meal-card-header">
+            <div>
+              <span class="label">${meal.name}</span>
+              <h3>${meal.time}</h3>
+            </div>
+            <strong>${meal.calories} kcal</strong>
+          </div>
+          <div class="nutrition-row">
+            <span>蛋白质 ${meal.proteinG}g</span>
+            <span>碳水 ${meal.carbG}g</span>
+            <span>脂肪 ${meal.fatG}g</span>
+          </div>
+          <div class="meal-block">
+            <h4>食材克数</h4>
+            <ul>
+              ${meal.ingredients.map((item) => `<li>${item}</li>`).join("")}
+            </ul>
+          </div>
+          <div class="meal-block">
+            <h4>好吃做法</h4>
+            <p>${meal.methods[selectedTaste] || meal.methods.chinese}</p>
+          </div>
+          <div class="meal-block">
+            <h4>替换食材</h4>
+            <div class="swap-list">
+              ${meal.swaps.map((item) => `<span>${item}</span>`).join("")}
+            </div>
+          </div>
+        </article>
+      `
+    )
+    .join("");
+}
+
+function renderMealModeOptions() {
+  if (!mealModeOptionsContainer) {
+    return;
+  }
+
+  mealModeOptionsContainer.innerHTML = mealPlanModes
+    .map(
+      (mode) => `
+        <button class="taste-option ${mode.id === selectedMealMode ? "is-active" : ""}" type="button" data-meal-mode-id="${mode.id}">
+          ${mode.name}
+        </button>
+      `
+    )
+    .join("");
+}
+
+function renderTasteOptions() {
+  if (!tasteOptionsContainer) {
+    return;
+  }
+
+  tasteOptionsContainer.innerHTML = tastePreferences
+    .map(
+      (taste) => `
+        <button class="taste-option ${taste.id === selectedTaste ? "is-active" : ""}" type="button" data-taste-id="${taste.id}">
+          ${taste.name}
+        </button>
+      `
+    )
+    .join("");
+}
+
 if (bodyDateInput) {
   bodyDateInput.value = todayText();
 }
@@ -125,6 +221,9 @@ if (recordDateInput) {
 }
 
 renderBodyReport();
+renderMealModeOptions();
+renderTasteOptions();
+renderMealPlan();
 
 tabs.forEach((tab) => {
   tab.addEventListener("click", () => {
@@ -142,6 +241,34 @@ checkButtons.forEach((button) => {
     button.classList.toggle("is-done");
   });
 });
+
+if (tasteOptionsContainer) {
+  tasteOptionsContainer.addEventListener("click", (event) => {
+    const button = event.target.closest("[data-taste-id]");
+    if (!button) {
+      return;
+    }
+
+    selectedTaste = button.dataset.tasteId;
+    localStorage.setItem(tasteStoreKey, selectedTaste);
+    renderTasteOptions();
+    renderMealPlan();
+  });
+}
+
+if (mealModeOptionsContainer) {
+  mealModeOptionsContainer.addEventListener("click", (event) => {
+    const button = event.target.closest("[data-meal-mode-id]");
+    if (!button) {
+      return;
+    }
+
+    selectedMealMode = button.dataset.mealModeId;
+    localStorage.setItem(mealModeStoreKey, selectedMealMode);
+    renderMealModeOptions();
+    renderMealPlan();
+  });
+}
 
 if (foodPhotoInput) {
   foodPhotoInput.addEventListener("change", async () => {
