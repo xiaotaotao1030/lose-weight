@@ -24,10 +24,6 @@ const plan = calculatePlan(userProfile);
 let selectedTaste = localStorage.getItem(tasteStoreKey) || "chinese";
 let selectedMealMode = localStorage.getItem(mealModeStoreKey) || "twoMeal";
 
-if ("serviceWorker" in navigator && location.protocol.startsWith("http")) {
-  navigator.serviceWorker.register("./sw.js");
-}
-
 function setText(selector, value) {
   const element = document.querySelector(selector);
   if (element) {
