@@ -10,12 +10,12 @@ function sumNutrition(foods) {
   );
 }
 
-function normalizeFoodAnalysis(data) {
+function normalizeImageAnalysis(data) {
   const foods = (data.foods || [])
     .filter((food) => food.name)
     .map((food) => ({
       name: String(food.name || ""),
-      quantity: String(food.quantity || "1份"),
+      quantity: String(food.quantity || "约1份"),
       estimatedWeight: String(food.estimatedWeight || "约常规份量"),
       calories: Number(food.calories || 0),
       protein: Number(food.protein || 0),
@@ -23,10 +23,9 @@ function normalizeFoodAnalysis(data) {
       fat: Number(food.fat || 0),
       confidence: String(food.confidence || "中"),
     }));
-  const mealTotal = data.mealTotal || data.total || sumNutrition(foods);
+  const mealTotal = data.mealTotal || sumNutrition(foods);
 
   return {
-    mealName: data.mealName || "未分类饮食",
     foods,
     mealTotal: {
       calories: Number(mealTotal.calories || 0),
@@ -34,7 +33,7 @@ function normalizeFoodAnalysis(data) {
       carbs: Number(mealTotal.carbs || 0),
       fat: Number(mealTotal.fat || 0),
     },
-    summary: data.summary || "本餐为估算值，可根据实际份量修改。",
+    summary: data.summary || "图片识别结果为估算值，可根据实际份量修改。",
   };
 }
 
@@ -61,9 +60,9 @@ module.exports = async function handler(request, response) {
     return;
   }
 
-  const text = String(request.body?.text || "").trim();
-  if (!text) {
-    response.status(400).json({ error: "请输入饮食内容" });
+  const image = String(request.body?.image || "");
+  if (!image.startsWith("data:image/")) {
+    response.status(400).json({ error: "请上传食物图片" });
     return;
   }
 
@@ -76,31 +75,36 @@ module.exports = async function handler(request, response) {
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        model: process.env.OPENAI_MODEL || "gpt-4o-mini",
+        model: process.env.OPENAI_VISION_MODEL || process.env.OPENAI_MODEL || "gpt-4o-mini",
         input: [
           {
             role: "system",
             content:
-              "你是营养记录助手。请从中文饮食描述中识别所有可能食物，不允许只返回第一个食物。把每个独立食物分开估算数量、重量、热量、蛋白质、碳水和脂肪。无法确定重量时使用常见默认份量估算，并在summary说明估算。根据描述判断mealName，只能是早餐、午餐、晚餐、加餐、饮品、未分类饮食。只输出JSON。",
+              "你是专业营养分析助手。请根据用户上传的食物图片，识别图片中真实存在的食物。只识别图片中能看到的食物，不要编造图片中没有的食物。如果图片是牛排，就识别为牛排、牛肉或steak，不要把牛排识别成鸡腿面条。如果无法确定，请在名称中写“疑似”。估算每种食物重量、热量、蛋白质、碳水和脂肪。只返回JSON。",
           },
           {
             role: "user",
-            content: text,
+            content: [
+              {
+                type: "input_text",
+                text: "请识别这张食物图片，并返回结构化营养估算。",
+              },
+              {
+                type: "input_image",
+                image_url: image,
+              },
+            ],
           },
         ],
         text: {
           format: {
             type: "json_schema",
-            name: "food_analysis",
+            name: "image_food_analysis",
             strict: true,
             schema: {
               type: "object",
               additionalProperties: false,
               properties: {
-                mealName: {
-                  type: "string",
-                  enum: ["早餐", "午餐", "晚餐", "加餐", "饮品", "未分类饮食"],
-                },
                 foods: {
                   type: "array",
                   items: {
@@ -141,7 +145,7 @@ module.exports = async function handler(request, response) {
                 },
                 summary: { type: "string" },
               },
-              required: ["mealName", "foods", "mealTotal", "summary"],
+              required: ["foods", "mealTotal", "summary"],
             },
           },
         },
@@ -163,7 +167,7 @@ module.exports = async function handler(request, response) {
 
   try {
     const parsed = JSON.parse(extractOutputText(openaiJson));
-    response.status(200).json(normalizeFoodAnalysis(parsed));
+    response.status(200).json(normalizeImageAnalysis(parsed));
   } catch (error) {
     response.status(502).json({ errorType: "json_parse", error: "AI返回格式异常，请重试" });
   }

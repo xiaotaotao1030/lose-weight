@@ -1,40 +1,3 @@
-const sampleFoodResults = [
-  {
-    name: "虾仁米饭餐",
-    confidence: 86,
-    weight: "约 370g",
-    items: ["虾仁 120g", "米饭 150g", "青菜 100g"],
-    nutrition: { calories: 430, proteinG: 31, carbG: 55, fatG: 8 },
-    note: "蛋白质较好，米饭正常保留，适合作为午餐。",
-  },
-  {
-    name: "鸡腿面条",
-    confidence: 82,
-    weight: "约 420g",
-    items: ["鸡腿肉 120g", "面条 180g", "蔬菜 120g"],
-    nutrition: { calories: 520, proteinG: 34, carbG: 62, fatG: 14 },
-    note: "碳水偏完整，晚餐吃的话建议面量控制在半份。",
-  },
-  {
-    name: "牛排鸡蛋餐",
-    confidence: 79,
-    weight: "约 300g",
-    items: ["牛排 120g", "鸡蛋 1个", "蔬菜 120g"],
-    nutrition: { calories: 460, proteinG: 38, carbG: 10, fatG: 28 },
-    note: "蛋白质充足，建议搭配少量米饭或土豆补充碳水。",
-  },
-];
-
-function mockRecognizeFood(file) {
-  const index = file.size % sampleFoodResults.length;
-
-  return new Promise((resolve) => {
-    setTimeout(() => {
-      resolve(sampleFoodResults[index]);
-    }, 900);
-  });
-}
-
 function inferMealTime(input, foodName) {
   const markers = [
     { mealTime: "早餐", words: ["早餐", "早上", "早饭", "早晨"] },
@@ -60,7 +23,7 @@ function inferMealTime(input, foodName) {
 
 async function analyzeFoodTextOnline(text) {
   if (window.location.protocol === "file:") {
-    throw new Error("当前是本地文件预览，不能访问 Vercel 后端接口；请用 Vercel 线上地址打开，并配置 OPENAI_API_KEY");
+    throw new Error("当前是本地文件预览，不能访问后端 AI 接口。请用 Vercel 线上地址测试。");
   }
 
   const response = await fetch("/api/analyze-food", {
@@ -69,14 +32,104 @@ async function analyzeFoodTextOnline(text) {
       "Content-Type": "application/json",
     },
     body: JSON.stringify({ text }),
+  }).catch(() => {
+    throw new Error("网络异常，请检查连接");
   });
 
-  const data = await response.json().catch(() => ({}));
+  const data = await response.json().catch(() => {
+    throw new Error("AI返回格式异常，请重试");
+  });
   if (!response.ok) {
-    throw new Error(data.error || "联网 AI 分析失败");
+    throw new Error(data.error || mapApiError(data.errorType));
   }
 
   return normalizeOnlineFoodAnalysis(data, text);
+}
+
+async function analyzeFoodImageOnline(image) {
+  if (window.location.protocol === "file:") {
+    throw new Error("当前是本地文件预览，不能访问后端 AI 接口。请用 Vercel 线上地址测试。");
+  }
+
+  const response = await fetch("/api/analyze-image", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({ image }),
+  }).catch(() => {
+    throw new Error("网络异常，请检查连接");
+  });
+
+  const data = await response.json().catch(() => {
+    throw new Error("AI返回格式异常，请重试");
+  });
+  if (!response.ok) {
+    throw new Error(data.error || mapApiError(data.errorType));
+  }
+
+  return normalizeImageFoodAnalysis(data);
+}
+
+function readFileAsDataUrl(file) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.addEventListener("load", () => resolve(reader.result));
+    reader.addEventListener("error", () => reject(new Error("图片读取失败，请重新上传")));
+    reader.readAsDataURL(file);
+  });
+}
+
+function mapApiError(errorType) {
+  const messages = {
+    missing_key: "后端未读取到 OPENAI_API_KEY",
+    api_failed: "AI分析失败，请稍后重试",
+    json_parse: "AI返回格式异常，请重试",
+    network: "网络异常，请检查连接",
+  };
+  return messages[errorType] || "AI分析失败，请稍后重试";
+}
+
+function normalizeImageFoodAnalysis(data) {
+  const foods = (data.foods || []).map((food) => {
+    const nutrition = {
+      calories: Number(food.calories || 0),
+      proteinG: Number(food.protein || 0),
+      carbG: Number(food.carbs || 0),
+      fatG: Number(food.fat || 0),
+    };
+
+    return {
+      name: food.name,
+      quantity: food.quantity || "约1份",
+      weight: food.estimatedWeight || "AI估算份量",
+      confidence: food.confidence || "中",
+      calories: nutrition.calories,
+      protein: nutrition.proteinG,
+      carbs: nutrition.carbG,
+      fat: nutrition.fatG,
+      nutrition,
+    };
+  });
+  const total = data.mealTotal || {};
+
+  return {
+    foods: foods.map((food) => ({
+      name: food.name,
+      amount: food.quantity,
+      estimatedWeight: food.weight,
+      confidence: food.confidence,
+      nutrition: food.nutrition,
+    })),
+    mealItems: foods,
+    nutrition: {
+      calories: Number(total.calories || 0),
+      proteinG: Number(total.protein || 0),
+      carbG: Number(total.carbs || 0),
+      fatG: Number(total.fat || 0),
+    },
+    note: data.summary || "图片识别结果为估算值，可根据实际份量修改。",
+  };
 }
 
 function normalizeOnlineFoodAnalysis(data, input) {

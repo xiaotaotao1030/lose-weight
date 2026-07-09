@@ -545,6 +545,24 @@ function renderTextFoodAnalysis(result) {
     .join("");
 }
 
+function renderImageFoodAnalysis(result) {
+  const foods = result.mealItems || [];
+  const primaryFood = foods[0];
+  aiResult.hidden = false;
+  setText("[data-food-name]", foods.length ? `识别到你吃了 ${foods.length} 样食物` : "未识别到明确食物");
+  setText("[data-food-calories]", Math.round(result.nutrition.calories));
+  setText("[data-food-protein]", Math.round(result.nutrition.proteinG));
+  setText("[data-food-carb]", Math.round(result.nutrition.carbG));
+  setText("[data-food-fat]", Math.round(result.nutrition.fatG));
+  setText(
+    "[data-food-items]",
+    foods.map((food) => `${food.name} ${food.quantity}，约 ${food.calories} kcal`).join("；") || "--"
+  );
+  setText("[data-food-weight]", primaryFood ? primaryFood.weight : "--");
+  setText("[data-food-confidence]", primaryFood ? primaryFood.confidence : "--");
+  setText("[data-food-note]", `${result.note} 本餐合计：${Math.round(result.nutrition.calories)} kcal，蛋白质 ${Math.round(result.nutrition.proteinG)}g，碳水 ${Math.round(result.nutrition.carbG)}g，脂肪 ${Math.round(result.nutrition.fatG)}g。`);
+}
+
 function applyStatusFromText(input) {
   const date = todayText();
   const waterMatch = input.match(/(\d+(?:\.\d+)?)\s*(l|L|升|毫升|ml|ML)/);
@@ -587,7 +605,7 @@ if (analyzeFoodTextButton) {
       renderTextFoodAnalysis(pendingTextFoodAnalysis);
     } catch (error) {
       pendingTextFoodAnalysis = null;
-      setText("[data-text-food-status]", `${error.message}。请确认已部署到 Vercel，并配置 OPENAI_API_KEY。`);
+      setText("[data-text-food-status]", error.message);
     } finally {
       analyzeFoodTextButton.disabled = false;
     }
@@ -637,23 +655,16 @@ if (foodPhotoInput) {
     setText("[data-food-confidence]", "--");
     setText("[data-food-note]", "请稍等，正在估算食物热量。");
 
-    const reader = new FileReader();
-    reader.addEventListener("load", () => {
-      pendingFoodPhotoData = reader.result;
-    });
-    reader.readAsDataURL(file);
-
-    const result = await mockRecognizeFood(file);
-    pendingPhotoFoodAnalysis = result;
-    setText("[data-food-name]", result.name);
-    setText("[data-food-calories]", result.nutrition.calories);
-    setText("[data-food-protein]", result.nutrition.proteinG);
-    setText("[data-food-carb]", result.nutrition.carbG);
-    setText("[data-food-fat]", result.nutrition.fatG);
-    setText("[data-food-items]", result.items.join("、"));
-    setText("[data-food-weight]", result.weight);
-    setText("[data-food-confidence]", result.confidence);
-    setText("[data-food-note]", result.note);
+    try {
+      pendingFoodPhotoData = await readFileAsDataUrl(file);
+      const result = await analyzeFoodImageOnline(pendingFoodPhotoData);
+      pendingPhotoFoodAnalysis = result;
+      renderImageFoodAnalysis(result);
+    } catch (error) {
+      pendingPhotoFoodAnalysis = null;
+      setText("[data-food-name]", "识别失败");
+      setText("[data-food-note]", error.message);
+    }
   });
 }
 
@@ -667,11 +678,14 @@ if (addPhotoFoodRecordButton) {
     addFoodPhotoEntry(todayText(), {
       time: new Date().toLocaleTimeString("zh-CN", { hour: "2-digit", minute: "2-digit" }),
       photo: pendingFoodPhotoData,
-      foods: pendingPhotoFoodAnalysis.items.map((item) => ({
-        name: item,
-        amount: pendingPhotoFoodAnalysis.weight,
+      foods: pendingPhotoFoodAnalysis.foods.map((food) => ({
+        name: food.name,
+        amount: food.amount,
+        estimatedWeight: food.estimatedWeight,
+        confidence: food.confidence,
+        nutrition: food.nutrition,
       })),
-      confidence: pendingPhotoFoodAnalysis.confidence,
+      confidence: pendingPhotoFoodAnalysis.foods[0]?.confidence || "中",
       nutrition: pendingPhotoFoodAnalysis.nutrition,
     });
     setText("[data-food-note]", "已加入今日记录，首页 Dashboard 已更新。");

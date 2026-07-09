@@ -36,7 +36,7 @@
 - 自动计算 BMI、BMR、每日推荐摄入热量和三大营养素目标
 - 首页 Dashboard 展示今日热量、净摄入、剩余/超出热量、三大营养素缺口
 - AI 文字饮食分析：前端请求 `/api/analyze-food`，后端读取 `OPENAI_API_KEY` 调用 OpenAI
-- 食物图片上传入口：支持拍摄或相册上传，当前为前端模拟识别
+- 食物图片上传入口：支持拍摄或相册上传，前端转 base64 后请求 `/api/analyze-image`
 - 今日饮食时间轴：按早餐、午餐、晚餐展示食物，可删除单条食物记录
 - 饮水打卡：+250ml、+500ml、+1L、手动输入
 - 排便打卡：有 / 无，支持简单状态
@@ -58,7 +58,7 @@
 
 ## AI 功能说明
 
-文字饮食分析必须部署到 Vercel 或使用可访问 `/api/analyze-food` 的本地服务。直接用 `file://` 打开 `index.html` 时，浏览器无法调用 Vercel Serverless API。
+AI 饮食分析必须部署到 Vercel 或使用可访问 `/api` 的本地服务。直接用 `file://` 打开 `index.html` 时，浏览器无法调用 Vercel Serverless API。
 
 Vercel 环境变量：
 
@@ -68,6 +68,8 @@ OPENAI_MODEL=gpt-4o-mini
 ```
 
 后端接口：`POST /api/analyze-food`
+
+图片接口：`POST /api/analyze-image`
 
 返回结构：
 

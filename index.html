@@ -177,7 +177,7 @@
           <section class="card">
             <div class="section-title">
               <h2>AI 饮食识别</h2>
-              <span>原型版</span>
+              <span>图片分析</span>
             </div>
             <label class="upload-box" for="food-photo">
               <input id="food-photo" type="file" accept="image/*" />
@@ -197,11 +197,11 @@
               </div>
               <p class="body-text">识别食物：<span data-food-items>--</span></p>
               <p class="body-text">预计重量：<span data-food-weight>--</span></p>
-              <p class="body-text">可信度：<span data-food-confidence>--</span>%</p>
+              <p class="body-text">可信度：<span data-food-confidence>--</span></p>
               <p class="notice" data-food-note></p>
               <button class="primary-button" type="button" data-add-photo-food-record>加入今日记录</button>
             </div>
-            <p class="notice">当前为前端原型模拟识别。真实上线时需要通过后端调用视觉 AI，避免密钥暴露在前端。</p>
+            <p class="notice">图片会发送到后端 AI 接口分析，OPENAI_API_KEY 不会暴露在前端。</p>
           </section>
 
           <section class="card">
