@@ -1,5 +1,4 @@
 const dailyRecordStoreKey = "light-plan-v1-daily-records";
-const legacyDailyRecordStoreKey = "light-plan-daily-records";
 
 function emptyNutrition() {
   return {
@@ -16,6 +15,10 @@ function createDailyRecord(date) {
     meals: [],
     foodPhotos: [],
     nutritionTotals: emptyNutrition(),
+    water: {
+      amountL: 0,
+      targetL: 2,
+    },
     exercise: {
       type: "none",
       minutes: 0,
@@ -30,7 +33,7 @@ function createDailyRecord(date) {
       status: "",
       note: "",
     },
-    legacy: {
+    notes: {
       food: "",
       exercise: "",
     },
@@ -61,6 +64,11 @@ function normalizeDailyRecord(record) {
   normalized.weight = {
     valueKg: record.weight?.valueKg || record.weightKg || "",
   };
+  normalized.water = {
+    ...createDailyRecord(record.date).water,
+    ...(record.water || {}),
+    amountL: Number(record.water?.amountL || 0),
+  };
   normalized.exercise = {
     ...createDailyRecord(record.date).exercise,
     ...(record.exercise && typeof record.exercise === "object" ? record.exercise : {}),
@@ -70,17 +78,17 @@ function normalizeDailyRecord(record) {
     ...createDailyRecord(record.date).bowel,
     ...(record.bowel || {}),
   };
-  normalized.legacy = {
-    food: record.legacy?.food || record.food || "",
-    exercise: record.legacy?.exercise || (typeof record.exercise === "string" ? record.exercise : ""),
+  normalized.notes = {
+    food: record.notes?.food || "",
+    exercise: record.notes?.exercise || "",
   };
   normalized.nutritionTotals = sumNutrition([...normalized.meals, ...normalized.foodPhotos]);
 
   return {
     ...normalized,
     weightKg: normalized.weight.valueKg,
-    food: normalized.legacy.food,
-    exercise: normalized.legacy.exercise || normalized.exercise.note,
+    foodNote: normalized.notes.food,
+    exerciseText: normalized.notes.exercise || normalized.exercise.note,
   };
 }
 
@@ -95,18 +103,7 @@ function writeJson(key, value) {
 
 function readDailyRecords() {
   const records = readJson(dailyRecordStoreKey);
-  if (records.length > 0) {
-    return records.map(normalizeDailyRecord);
-  }
-
-  const legacyRecords = readJson(legacyDailyRecordStoreKey);
-  if (legacyRecords.length === 0) {
-    return [];
-  }
-
-  const migratedRecords = legacyRecords.map(normalizeDailyRecord);
-  saveDailyRecords(migratedRecords);
-  return migratedRecords;
+  return records.map(normalizeDailyRecord);
 }
 
 function saveDailyRecords(records) {
@@ -128,13 +125,9 @@ function upsertDailyRecord(record) {
       ...(record.weight || {}),
       valueKg: record.weight?.valueKg || record.weightKg || existing.weight?.valueKg || "",
     },
-    legacy: {
-      ...existing.legacy,
-      ...(record.legacy || {}),
-      food: record.legacy?.food || record.food || existing.legacy?.food || "",
-      exercise:
-        record.legacy?.exercise ||
-        (typeof record.exercise === "string" ? record.exercise : existing.legacy?.exercise || ""),
+    notes: {
+      ...existing.notes,
+      ...(record.notes || {}),
     },
     updatedAt: record.updatedAt || new Date().toISOString(),
   });
@@ -209,5 +202,39 @@ function updateBowelRecord(date, bowel) {
       ...record.bowel,
       ...bowel,
     },
+  });
+}
+
+function updateWaterRecord(date, water) {
+  const record = findDailyRecord(date) || createDailyRecord(date);
+  return upsertDailyRecord({
+    ...record,
+    water: {
+      ...record.water,
+      ...water,
+    },
+  });
+}
+
+function deleteFoodFromMeal(date, mealId, foodIndex) {
+  const record = findDailyRecord(date) || createDailyRecord(date);
+  const meals = record.meals
+    .map((meal) => {
+      if (meal.id !== mealId) {
+        return meal;
+      }
+
+      const foods = meal.foods.filter((_, index) => index !== foodIndex);
+      return {
+        ...meal,
+        foods,
+        nutrition: sumNutrition(foods),
+      };
+    })
+    .filter((meal) => meal.foods.length > 0);
+
+  return upsertDailyRecord({
+    ...record,
+    meals,
   });
 }

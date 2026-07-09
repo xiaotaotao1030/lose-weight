@@ -1,6 +1,5 @@
 const tabs = document.querySelectorAll(".tab-item");
 const pages = document.querySelectorAll(".page");
-const checkButtons = document.querySelectorAll(".check-dot");
 const foodPhotoInput = document.querySelector("#food-photo");
 const foodPreview = document.querySelector("[data-food-preview]");
 const aiResult = document.querySelector("[data-ai-result]");
@@ -8,28 +7,36 @@ const foodTextInput = document.querySelector("[data-food-text-input]");
 const analyzeFoodTextButton = document.querySelector("[data-analyze-food-text]");
 const addTextFoodRecordButton = document.querySelector("[data-add-text-food-record]");
 const addPhotoFoodRecordButton = document.querySelector("[data-add-photo-food-record]");
-const bodyDateInput = document.querySelector("[data-body-date]");
-const bodyPhotoInput = document.querySelector("#body-photo");
-const bodyPreview = document.querySelector("[data-body-preview]");
-const saveBodyButton = document.querySelector("[data-save-body-checkin]");
-const reportTabs = document.querySelectorAll(".report-tab");
 const recordDateInput = document.querySelector("[data-record-date]");
 const recordWeightInput = document.querySelector("[data-record-weight]");
 const recordFoodInput = document.querySelector("[data-record-food]");
 const recordExerciseInput = document.querySelector("[data-record-exercise]");
+const recordExerciseTypeInput = document.querySelector("[data-record-exercise-type]");
+const recordExerciseMinutesInput = document.querySelector("[data-record-exercise-minutes]");
+const recordExerciseCaloriesInput = document.querySelector("[data-record-exercise-calories]");
+const recordBowelHasInput = document.querySelector("[data-record-bowel-has]");
+const recordBowelStatusInput = document.querySelector("[data-record-bowel-status]");
+const recordBowelNoteInput = document.querySelector("[data-record-bowel-note]");
 const saveDailyRecordButton = document.querySelector("[data-save-daily-record]");
-const mealPlanContainer = document.querySelector("[data-meal-plan]");
-const tasteOptionsContainer = document.querySelector("[data-taste-options]");
-const mealModeOptionsContainer = document.querySelector("[data-meal-mode-options]");
-const tasteStoreKey = "light-plan-taste-preference";
-const mealModeStoreKey = "light-plan-meal-mode";
-let bodyPhotoData = "";
+const waterManualInput = document.querySelector("[data-water-manual]");
+const saveWaterButton = document.querySelector("[data-save-water]");
+const waterAddButtons = document.querySelectorAll("[data-water-add]");
+const profileStoreKey = "light-plan-user-profile";
+const profileInputs = {
+  gender: document.querySelector("[data-profile-gender]"),
+  age: document.querySelector("[data-profile-age]"),
+  heightCm: document.querySelector("[data-profile-height]"),
+  currentWeightKg: document.querySelector("[data-profile-current-weight]"),
+  targetWeightKg: document.querySelector("[data-profile-target-weight]"),
+  targetDays: document.querySelector("[data-profile-target-days]"),
+  activityLevel: document.querySelector("[data-profile-activity]"),
+};
+const saveProfileButton = document.querySelector("[data-save-profile]");
 let pendingTextFoodAnalysis = null;
 let pendingPhotoFoodAnalysis = null;
 let pendingFoodPhotoData = "";
-const plan = calculatePlan(userProfile);
-let selectedTaste = localStorage.getItem(tasteStoreKey) || "chinese";
-let selectedMealMode = localStorage.getItem(mealModeStoreKey) || "twoMeal";
+let activeProfile = readUserProfile();
+let plan = calculatePlan(activeProfile);
 
 if ("serviceWorker" in navigator) {
   navigator.serviceWorker.getRegistrations().then((registrations) => {
@@ -44,19 +51,56 @@ function setText(selector, value) {
   }
 }
 
-setText("[data-current-weight]", userProfile.currentWeightKg);
-setText("[data-target-weight]", userProfile.targetWeightKg);
-setText("[data-goal-label]", `${userProfile.targetDays} 天目标`);
-setText("[data-bmi]", plan.bmi);
-setText("[data-bmr]", plan.bmr);
-setText("[data-calories]", plan.calories);
-setText("[data-deficit]", plan.dailyDeficit);
-setText(
-  "[data-goal-notice]",
-  plan.isAggressiveGoal
-    ? `3 个月减 12kg 偏快，原目标需要每日约 ${plan.targetDailyDeficit} kcal 缺口。当前算法先按每日 ${plan.dailyDeficit} kcal 缺口计算，预计 90 天到 ${plan.expectedWeightKg}kg 左右。`
-    : "当前目标节奏合理，可以按计划执行并根据体重变化微调。"
-);
+function readUserProfile() {
+  const saved = localStorage.getItem(profileStoreKey);
+  if (!saved) {
+    return { ...userProfile };
+  }
+
+  try {
+    return { ...userProfile, ...JSON.parse(saved) };
+  } catch (error) {
+    return { ...userProfile };
+  }
+}
+
+function saveUserProfile(profile) {
+  localStorage.setItem(profileStoreKey, JSON.stringify(profile));
+}
+
+function renderProfileSummary() {
+  activeProfile = readUserProfile();
+  plan = calculatePlan(activeProfile);
+
+  setText("[data-current-weight]", activeProfile.currentWeightKg);
+  setText("[data-target-weight]", activeProfile.targetWeightKg);
+  setText("[data-target-days]", activeProfile.targetDays);
+  setText("[data-goal-label]", `${activeProfile.targetDays} 天目标`);
+  setText("[data-bmi]", plan.bmi);
+  setText("[data-bmr]", plan.bmr);
+  setText("[data-calories]", plan.calories);
+  setText("[data-deficit]", plan.dailyDeficit);
+  setText("[data-profile-bmi]", plan.bmi);
+  setText("[data-profile-bmr]", plan.bmr);
+  setText("[data-profile-calories]", plan.calories);
+  setText("[data-profile-protein]", plan.proteinG);
+  setText(
+    "[data-goal-notice]",
+    plan.isAggressiveGoal
+      ? `目标需要每日约 ${plan.targetDailyDeficit} kcal 缺口。当前算法先按每日 ${plan.dailyDeficit} kcal 缺口计算，预计到 ${plan.expectedWeightKg}kg 左右。`
+      : "当前目标节奏合理，可以按记录结果微调。"
+  );
+
+  if (profileInputs.gender) {
+    profileInputs.gender.value = activeProfile.gender;
+    profileInputs.age.value = activeProfile.age;
+    profileInputs.heightCm.value = activeProfile.heightCm;
+    profileInputs.currentWeightKg.value = activeProfile.currentWeightKg;
+    profileInputs.targetWeightKg.value = activeProfile.targetWeightKg;
+    profileInputs.targetDays.value = activeProfile.targetDays;
+    profileInputs.activityLevel.value = activeProfile.activityLevel;
+  }
+}
 
 function setProgress(selector, value, target) {
   const element = document.querySelector(selector);
@@ -70,16 +114,19 @@ function setProgress(selector, value, target) {
 
 function formatExercise(exercise) {
   if (!exercise || exercise.type === "none") {
-    return "未运动";
+    return "无运动";
   }
 
   const typeMap = {
     walk: "步行",
     run: "跑步",
-    gym: "健身",
+    strength: "力量训练",
+    yoga: "瑜伽",
+    cycling: "骑行",
     other: "其他",
   };
-  return `${typeMap[exercise.type] || exercise.type} ${exercise.minutes || 0} 分钟`;
+  const calories = Number(exercise.calories || 0);
+  return `${typeMap[exercise.type] || exercise.type} ${exercise.minutes || 0} 分钟${calories ? ` · 消耗 ${calories} kcal` : ""}`;
 }
 
 function formatBowel(bowel) {
@@ -93,6 +140,7 @@ function formatBowel(bowel) {
 function calculateCompletion(record) {
   const items = [
     record.nutritionTotals.calories > 0,
+    record.water.amountL > 0,
     record.weight.valueKg,
     record.exercise.type !== "none" || record.exercise.note,
     record.bowel.hasBowel !== null,
@@ -144,6 +192,29 @@ function formatFoodNames(foods) {
   return foods.map((food) => `${food.name}${food.amount ? ` ${food.amount}` : ""}`).join("、");
 }
 
+function formatGap(value, target) {
+  const gap = Math.round(target - value);
+  return gap >= 0 ? `还差 ${gap}g` : `已超出 ${Math.abs(gap)}g`;
+}
+
+function formatCalorieGap(value, target) {
+  const gap = Math.round(target - value);
+  return gap >= 0 ? `${gap}` : `已超出 ${Math.abs(gap)}`;
+}
+
+function estimateExerciseCalories(type, minutes) {
+  const perMinute = {
+    none: 0,
+    walk: 4,
+    run: 8,
+    strength: 6,
+    yoga: 3,
+    cycling: 7,
+    other: 5,
+  };
+  return Math.round((perMinute[type] || 0) * Number(minutes || 0));
+}
+
 function renderMealTimeline(record) {
   const timeline = document.querySelector("[data-dashboard-meal-timeline]");
   if (!timeline) {
@@ -157,43 +228,32 @@ function renderMealTimeline(record) {
   ];
   const entries = [];
   record.meals.forEach((meal) => {
-    if (meal.foods?.some((food) => food.mealTime)) {
-      meal.foods.forEach((food) => {
+    if (meal.foods?.length) {
+      meal.foods.forEach((food, foodIndex) => {
         entries.push({
-          id: `${meal.id}-${food.name}`,
+          id: `${meal.id}-${foodIndex}`,
+          mealId: meal.id,
+          foodIndex,
           time: meal.time,
           mealTime: food.mealTime,
           foods: [food],
           nutrition: food.nutrition || emptyNutrition(),
+          canDelete: true,
         });
       });
       return;
     }
-    entries.push({ ...meal, type: "meal" });
+    entries.push({ ...meal, type: "meal", canDelete: false });
   });
   record.foodPhotos.forEach((meal) => {
     entries.push({ ...meal, type: "photo" });
   });
-  const legacyFood = record.legacy?.food
-    ? [
-        {
-          id: "legacy-food",
-          time: "",
-          type: "legacy",
-          foods: [{ name: record.legacy.food, amount: "" }],
-          nutrition: emptyNutrition(),
-        },
-      ]
-    : [];
-  const allEntries = [...entries, ...legacyFood];
+  const allEntries = entries;
 
   setText("[data-dashboard-meal-count]", `${allEntries.length} 餐`);
   timeline.innerHTML = slots
     .map((slot) => {
       const slotEntries = allEntries.filter((entry) => {
-        if (entry.type === "legacy") {
-          return slot.id === "breakfast";
-        }
         if (entry.mealTime) {
           return entry.mealTime === slot.name;
         }
@@ -206,8 +266,15 @@ function renderMealTimeline(record) {
                 const nutrition = entry.nutrition || emptyNutrition();
                 return `
                   <div class="timeline-food">
-                    <strong>${formatFoodNames(entry.foods)}</strong>
-                    <span>${Math.round(nutrition.calories)} kcal · 蛋白质 ${Math.round(nutrition.proteinG)}g · 碳水 ${Math.round(nutrition.carbG)}g · 脂肪 ${Math.round(nutrition.fatG)}g</span>
+                    <div>
+                      <strong>${formatFoodNames(entry.foods)}</strong>
+                      <span>${Math.round(nutrition.calories)} kcal · 蛋白质 ${Math.round(nutrition.proteinG)}g · 碳水 ${Math.round(nutrition.carbG)}g · 脂肪 ${Math.round(nutrition.fatG)}g</span>
+                    </div>
+                    ${
+                      entry.canDelete
+                        ? `<button class="text-button" type="button" data-delete-food-meal="${entry.mealId}" data-delete-food-index="${entry.foodIndex}">删除</button>`
+                        : ""
+                    }
                   </div>
                 `;
               })
@@ -262,7 +329,7 @@ function buildDailySummary(record, nutrition, calorieGoal) {
   if (caloriePercent >= 95) {
     advice = "今天热量接近目标，后续以低热量饮品或蔬菜为主。";
   } else if (proteinPercent < 80) {
-    advice = "下一餐优先补充鸡蛋、虾仁、鸡腿、牛排或无糖酸奶。";
+    advice = "下一餐可以优先补充鸡蛋、虾仁、鸡腿、牛排或无糖酸奶。";
   }
 
   return {
@@ -277,23 +344,30 @@ function renderDashboard() {
   const todayRecord = findDailyRecord(todayText()) || createDailyRecord(todayText());
   const nutrition = todayRecord.nutritionTotals || emptyNutrition();
   const calorieGoal = plan.calories;
-  const caloriesLeft = Math.max(calorieGoal - nutrition.calories, 0);
+  const exerciseCalories = Number(todayRecord.exercise?.calories || 0);
+  const netCalories = Math.max(nutrition.calories - exerciseCalories, 0);
+  const caloriesLeft = calorieGoal - nutrition.calories;
   const caloriePercent = getNutritionPercent(nutrition.calories, calorieGoal);
   const summary = buildDailySummary(todayRecord, nutrition, calorieGoal);
 
   setText("[data-dashboard-calories-goal]", calorieGoal);
   setText("[data-dashboard-calories-in]", Math.round(nutrition.calories));
-  setText("[data-dashboard-calories-left]", Math.round(caloriesLeft));
+  setText("[data-dashboard-calories-left]", formatCalorieGap(nutrition.calories, calorieGoal));
+  setText("[data-dashboard-net-calories]", Math.round(netCalories));
   setText("[data-dashboard-calorie-percent]", caloriePercent);
   setText("[data-dashboard-protein-in]", Math.round(nutrition.proteinG));
   setText("[data-dashboard-protein-goal]", plan.proteinG);
+  setText("[data-dashboard-protein-left]", formatGap(nutrition.proteinG, plan.proteinG));
   setText("[data-dashboard-carb-in]", Math.round(nutrition.carbG));
   setText("[data-dashboard-carb-goal]", plan.carbG);
+  setText("[data-dashboard-carb-left]", formatGap(nutrition.carbG, plan.carbG));
   setText("[data-dashboard-fat-in]", Math.round(nutrition.fatG));
   setText("[data-dashboard-fat-goal]", plan.fatG);
+  setText("[data-dashboard-fat-left]", formatGap(nutrition.fatG, plan.fatG));
+  setText("[data-dashboard-water]", `${todayRecord.water.amountL} L / ${todayRecord.water.targetL} L`);
   setText("[data-dashboard-exercise]", formatExercise(todayRecord.exercise));
   setText("[data-dashboard-bowel]", formatBowel(todayRecord.bowel));
-  setText("[data-dashboard-weight]", todayRecord.weight.valueKg || userProfile.currentWeightKg);
+  setText("[data-dashboard-weight]", todayRecord.weight.valueKg || activeProfile.currentWeightKg);
   setText("[data-dashboard-completion]", calculateCompletion(todayRecord));
   setText("[data-dashboard-record-status]", nutrition.calories > 0 ? "已记录饮食" : "待记录饮食");
   setText("[data-dashboard-summary-score]", summary.score);
@@ -316,157 +390,71 @@ function todayText() {
   return `${year}-${month}-${day}`;
 }
 
-function renderBodyReport(days = 30) {
-  const checkins = readBodyCheckins();
-  const latest = checkins[checkins.length - 1];
-  const report = buildChangeReport(days, checkins, userProfile, plan);
-  const game = buildGamification(checkins, userProfile, plan, todayText());
-  const latestPhoto = document.querySelector("[data-latest-body-photo]");
-  const emptyPhoto = document.querySelector("[data-empty-body-photo]");
-  const achievementList = document.querySelector("[data-achievement-list]");
-
-  setText("[data-body-count]", checkins.length);
-  setText("[data-report-weight]", report.estimatedWeight);
-  setText("[data-report-loss]", report.plannedLossKg);
-  setText("[data-report-summary]", report.summary);
-  setText("[data-latest-body-date]", latest ? latest.date : "暂无");
-  setText("[data-streak-days]", game.streak);
-  setText("[data-points]", game.points);
-  setText(
-    "[data-achievement-count]",
-    `${game.achievements.filter((item) => item.unlocked).length} / ${game.achievements.length}`
-  );
-
-  if (achievementList) {
-    achievementList.innerHTML = game.achievements
-      .map(
-        (item) => `
-          <article class="achievement-item ${item.unlocked ? "is-unlocked" : ""}">
-            <strong>${item.unlocked ? "已达成" : "未达成"} · ${item.name}</strong>
-            <span>${item.detail}</span>
-          </article>
-        `
-      )
-      .join("");
-  }
-
-  if (latest && latest.photo) {
-    latestPhoto.src = latest.photo;
-    latestPhoto.hidden = false;
-    emptyPhoto.hidden = true;
-  } else {
-    latestPhoto.hidden = true;
-    emptyPhoto.hidden = false;
-  }
-}
-
-function renderMealPlan() {
-  if (!mealPlanContainer) {
-    return;
-  }
-
-  const activeTaste = tastePreferences.find((taste) => taste.id === selectedTaste) || tastePreferences[0];
-  const activeMode = mealPlanModes.find((mode) => mode.id === selectedMealMode) || mealPlanModes[0];
-  const mealPlans = {
-    standard: dailyMealPlan,
-    twoMeal: twoMealPlan,
-    lazy: lazyMealPlan,
-  };
-  const meals = mealPlans[selectedMealMode] || twoMealPlan;
-  const mealSummary = summarizeMealPlan(meals);
-
-  setText("[data-taste-name]", activeTaste.name);
-  setText("[data-meal-mode-name]", activeMode.name);
-  setText("[data-meal-mode-notice]", mealModeNotices[selectedMealMode] || mealModeNotices.twoMeal);
-  setText("[data-meal-calories]", mealSummary.calories);
-  setText("[data-protein]", mealSummary.proteinG);
-  setText("[data-carb]", mealSummary.carbG);
-  setText("[data-fat]", mealSummary.fatG);
-
-  mealPlanContainer.innerHTML = meals
-    .map(
-      (meal) => `
-        <article class="meal-card">
-          <div class="meal-card-header">
-            <div>
-              <span class="label">${meal.name}</span>
-              <h3>${meal.time}</h3>
-            </div>
-            <strong>${meal.calories} kcal</strong>
-          </div>
-          <div class="nutrition-row">
-            <span>蛋白质 ${meal.proteinG}g</span>
-            <span>碳水 ${meal.carbG}g</span>
-            <span>脂肪 ${meal.fatG}g</span>
-          </div>
-          <div class="meal-block">
-            <h4>食材克数</h4>
-            <ul>
-              ${meal.ingredients.map((item) => `<li>${item}</li>`).join("")}
-            </ul>
-          </div>
-          <div class="meal-block">
-            <h4>好吃做法</h4>
-            <p>${meal.methods[selectedTaste] || meal.methods.chinese}</p>
-          </div>
-          <div class="meal-block">
-            <h4>替换食材</h4>
-            <div class="swap-list">
-              ${meal.swaps.map((item) => `<span>${item}</span>`).join("")}
-            </div>
-          </div>
-        </article>
-      `
-    )
-    .join("");
-}
-
-function renderMealModeOptions() {
-  if (!mealModeOptionsContainer) {
-    return;
-  }
-
-  mealModeOptionsContainer.innerHTML = mealPlanModes
-    .map(
-      (mode) => `
-        <button class="taste-option ${mode.id === selectedMealMode ? "is-active" : ""}" type="button" data-meal-mode-id="${mode.id}">
-          ${mode.name}
-        </button>
-      `
-    )
-    .join("");
-}
-
-function renderTasteOptions() {
-  if (!tasteOptionsContainer) {
-    return;
-  }
-
-  tasteOptionsContainer.innerHTML = tastePreferences
-    .map(
-      (taste) => `
-        <button class="taste-option ${taste.id === selectedTaste ? "is-active" : ""}" type="button" data-taste-id="${taste.id}">
-          ${taste.name}
-        </button>
-      `
-    )
-    .join("");
-}
-
-if (bodyDateInput) {
-  bodyDateInput.value = todayText();
-}
-
 function fillDailyRecord(date) {
   const record = findDailyRecord(date);
 
   recordWeightInput.value = record?.weightKg || "";
-  recordFoodInput.value = record?.food || "";
-  recordExerciseInput.value = record?.exercise || "";
+  recordFoodInput.value = record?.foodNote || "";
+  recordExerciseInput.value = record?.exercise?.note || record?.exerciseText || "";
+  recordExerciseTypeInput.value = record?.exercise?.type || "none";
+  recordExerciseMinutesInput.value = record?.exercise?.minutes || "";
+  recordExerciseCaloriesInput.value = record?.exercise?.calories || "";
+  recordBowelHasInput.value = record?.bowel?.hasBowel === true ? "yes" : record?.bowel?.hasBowel === false ? "no" : "";
+  recordBowelStatusInput.value = record?.bowel?.status || "";
+  recordBowelNoteInput.value = record?.bowel?.note || "";
   setText("[data-daily-record-status]", record ? "已保存" : "未保存");
 
   if (date === todayText()) {
-    setText("[data-current-weight]", record?.weightKg || userProfile.currentWeightKg);
+    setText("[data-current-weight]", record?.weightKg || activeProfile.currentWeightKg);
+  }
+}
+
+function renderWaterRecord() {
+  const record = findDailyRecord(todayText()) || createDailyRecord(todayText());
+  const water = record.water || createDailyRecord(todayText()).water;
+  if (waterManualInput) {
+    waterManualInput.value = water.amountL || "";
+  }
+  setText("[data-water-status]", `${water.amountL} L / ${water.targetL} L`);
+  setText("[data-water-note]", water.amountL >= water.targetL ? "今日饮水已达标。" : "每日目标 2L，少量多次更容易完成。");
+}
+
+function renderTrends() {
+  const records = readDailyRecords().slice(-7);
+  const weightTrend = document.querySelector("[data-weight-trend]");
+  const intakeTrend = document.querySelector("[data-intake-trend]");
+
+  if (weightTrend) {
+    const weightRecords = records.filter((record) => record.weight.valueKg);
+    weightTrend.innerHTML =
+      weightRecords.length > 0
+        ? weightRecords
+            .map(
+              (record) => `
+                <article class="trend-item">
+                  <span>${record.date}</span>
+                  <strong>${record.weight.valueKg} kg</strong>
+                </article>
+              `
+            )
+            .join("")
+        : `<p class="notice">记录体重后会显示趋势。</p>`;
+  }
+
+  if (intakeTrend) {
+    intakeTrend.innerHTML =
+      records.length > 0
+        ? records
+            .map(
+              (record) => `
+                <article class="trend-item">
+                  <span>${record.date}</span>
+                  <strong>${Math.round(record.nutritionTotals.calories)} kcal</strong>
+                </article>
+              `
+            )
+            .join("")
+        : `<p class="notice">记录饮食后会显示近 7 天摄入。</p>`;
   }
 }
 
@@ -479,11 +467,25 @@ if (recordDateInput) {
   });
 }
 
-renderBodyReport();
+function fillEstimatedExerciseCalories() {
+  if (!recordExerciseTypeInput || !recordExerciseMinutesInput || !recordExerciseCaloriesInput) {
+    return;
+  }
+  recordExerciseCaloriesInput.value = estimateExerciseCalories(
+    recordExerciseTypeInput.value,
+    recordExerciseMinutesInput.value
+  );
+}
+
+if (recordExerciseTypeInput && recordExerciseMinutesInput) {
+  recordExerciseTypeInput.addEventListener("change", fillEstimatedExerciseCalories);
+  recordExerciseMinutesInput.addEventListener("input", fillEstimatedExerciseCalories);
+}
+
+renderProfileSummary();
 renderDashboard();
-renderMealModeOptions();
-renderTasteOptions();
-renderMealPlan();
+renderWaterRecord();
+renderTrends();
 
 tabs.forEach((tab) => {
   tab.addEventListener("click", () => {
@@ -495,40 +497,6 @@ tabs.forEach((tab) => {
     });
   });
 });
-
-checkButtons.forEach((button) => {
-  button.addEventListener("click", () => {
-    button.classList.toggle("is-done");
-  });
-});
-
-if (tasteOptionsContainer) {
-  tasteOptionsContainer.addEventListener("click", (event) => {
-    const button = event.target.closest("[data-taste-id]");
-    if (!button) {
-      return;
-    }
-
-    selectedTaste = button.dataset.tasteId;
-    localStorage.setItem(tasteStoreKey, selectedTaste);
-    renderTasteOptions();
-    renderMealPlan();
-  });
-}
-
-if (mealModeOptionsContainer) {
-  mealModeOptionsContainer.addEventListener("click", (event) => {
-    const button = event.target.closest("[data-meal-mode-id]");
-    if (!button) {
-      return;
-    }
-
-    selectedMealMode = button.dataset.mealModeId;
-    localStorage.setItem(mealModeStoreKey, selectedMealMode);
-    renderMealModeOptions();
-    renderMealPlan();
-  });
-}
 
 function renderTextFoodAnalysis(result) {
   const resultPanel = document.querySelector("[data-text-food-result]");
@@ -543,7 +511,7 @@ function renderTextFoodAnalysis(result) {
   setText("[data-text-food-carb]", Math.round(result.nutrition.carbG));
   setText("[data-text-food-fat]", Math.round(result.nutrition.fatG));
   setText("[data-text-food-status]", result.note);
-  const mealOrder = ["早餐", "午餐", "晚餐", "零食", "饮品"];
+  const mealOrder = ["早餐", "午餐", "晚餐", "加餐", "饮品", "未分类饮食"];
   itemList.innerHTML = mealOrder
     .map((mealName) => {
       const foods = result.mealItems.filter((food) => food.mealTime === mealName);
@@ -562,7 +530,7 @@ function renderTextFoodAnalysis(result) {
                       (food) => `
                   <article class="text-food-item">
                     <strong>${food.name}</strong>
-                    <span>${food.quantity} · ${food.weight} · ${food.estimateNote || "估算值，可修改"}</span>
+                    <span>${food.quantity} · ${food.weight} · 可信度 ${food.confidence || "中"} · ${food.estimateNote || "估算值，可修改"}</span>
                     <span>${food.calories} kcal · 蛋白质 ${food.protein}g · 碳水 ${food.carbs}g · 脂肪 ${food.fat}g</span>
                   </article>
                 `
@@ -577,6 +545,31 @@ function renderTextFoodAnalysis(result) {
     .join("");
 }
 
+function applyStatusFromText(input) {
+  const date = todayText();
+  const waterMatch = input.match(/(\d+(?:\.\d+)?)\s*(l|L|升|毫升|ml|ML)/);
+  if (waterMatch) {
+    const rawAmount = Number(waterMatch[1]);
+    const unit = waterMatch[2].toLowerCase();
+    const amountL = unit.includes("ml") || unit.includes("毫升") ? rawAmount / 1000 : rawAmount;
+    updateWaterRecord(date, { amountL: Math.round(amountL * 100) / 100 });
+  }
+
+  if (/没有运动|无运动|没运动/.test(input)) {
+    updateExerciseRecord(date, { type: "none", minutes: 0, calories: 0, note: "" });
+  }
+
+  if (/没有排便|无排便|没排便/.test(input)) {
+    updateBowelRecord(date, { hasBowel: false, status: "", note: "" });
+  } else if (/排便了|有排便|今天排便/.test(input)) {
+    updateBowelRecord(date, { hasBowel: true, status: "正常" });
+  }
+
+  renderDashboard();
+  renderWaterRecord();
+  fillDailyRecord(date);
+}
+
 if (analyzeFoodTextButton) {
   analyzeFoodTextButton.addEventListener("click", async () => {
     const input = foodTextInput.value.trim();
@@ -585,6 +578,7 @@ if (analyzeFoodTextButton) {
       return;
     }
 
+    applyStatusFromText(input);
     analyzeFoodTextButton.disabled = true;
     setText("[data-text-food-status]", "正在联网分析饮食内容...");
 
@@ -616,6 +610,7 @@ if (addTextFoodRecordButton) {
     setText("[data-text-food-status]", "已加入今日记录，首页 Dashboard 已更新。");
     foodTextInput.value = "";
     renderDashboard();
+    renderTrends();
   });
 }
 
@@ -681,67 +676,94 @@ if (addPhotoFoodRecordButton) {
     });
     setText("[data-food-note]", "已加入今日记录，首页 Dashboard 已更新。");
     renderDashboard();
+    renderTrends();
   });
 }
 
-if (bodyPhotoInput) {
-  bodyPhotoInput.addEventListener("change", () => {
-    const file = bodyPhotoInput.files[0];
-    if (!file) {
+const timeline = document.querySelector("[data-dashboard-meal-timeline]");
+if (timeline) {
+  timeline.addEventListener("click", (event) => {
+    const button = event.target.closest("[data-delete-food-meal]");
+    if (!button) {
       return;
     }
 
-    const reader = new FileReader();
-    reader.addEventListener("load", () => {
-      bodyPhotoData = reader.result;
-      bodyPreview.src = bodyPhotoData;
-      bodyPreview.hidden = false;
-      saveBodyButton.disabled = false;
-      setText("[data-body-save-status]", "照片已选择，可以保存今日打卡。");
-    });
-    reader.readAsDataURL(file);
+    deleteFoodFromMeal(todayText(), button.dataset.deleteFoodMeal, Number(button.dataset.deleteFoodIndex));
+    renderDashboard();
+    renderTrends();
   });
 }
 
-if (saveBodyButton) {
-  saveBodyButton.addEventListener("click", () => {
-    if (!bodyPhotoData) {
-      return;
-    }
+waterAddButtons.forEach((button) => {
+  button.addEventListener("click", () => {
+    const record = findDailyRecord(todayText()) || createDailyRecord(todayText());
+    const amountL = Math.round((record.water.amountL + Number(button.dataset.waterAdd || 0)) * 100) / 100;
+    updateWaterRecord(todayText(), { amountL });
+    renderWaterRecord();
+    renderDashboard();
+  });
+});
 
-    upsertBodyCheckin({
-      date: bodyDateInput.value || todayText(),
-      photo: bodyPhotoData,
-    });
-    setText("[data-body-save-status]", "今日身体照片已保存。");
-    saveBodyButton.disabled = true;
-    renderBodyReport();
+if (saveWaterButton) {
+  saveWaterButton.addEventListener("click", () => {
+    updateWaterRecord(todayText(), { amountL: Number(waterManualInput.value || 0) });
+    renderWaterRecord();
+    renderDashboard();
   });
 }
 
 if (saveDailyRecordButton) {
   saveDailyRecordButton.addEventListener("click", () => {
     const date = recordDateInput.value || todayText();
+    const hasBowelValue = recordBowelHasInput.value;
 
     upsertDailyRecord({
       date,
-      weightKg: recordWeightInput.value,
-      food: recordFoodInput.value.trim(),
-      exercise: recordExerciseInput.value.trim(),
+      weight: {
+        valueKg: recordWeightInput.value,
+      },
+      notes: {
+        food: recordFoodInput.value.trim(),
+        exercise: recordExerciseInput.value.trim(),
+      },
+      exercise: {
+        type: recordExerciseTypeInput.value,
+        minutes: Number(recordExerciseMinutesInput.value || 0),
+        calories: Number(recordExerciseCaloriesInput.value || 0),
+        note: recordExerciseInput.value.trim(),
+      },
+      bowel: {
+        hasBowel: hasBowelValue === "" ? null : hasBowelValue === "yes",
+        status: recordBowelStatusInput.value,
+        note: recordBowelNoteInput.value.trim(),
+      },
       updatedAt: new Date().toISOString(),
     });
 
     setText("[data-daily-record-status]", "已保存");
+    renderTrends();
     if (date === todayText()) {
-      setText("[data-current-weight]", recordWeightInput.value || userProfile.currentWeightKg);
+      setText("[data-current-weight]", recordWeightInput.value || activeProfile.currentWeightKg);
       renderDashboard();
     }
   });
 }
 
-reportTabs.forEach((tab) => {
-  tab.addEventListener("click", () => {
-    reportTabs.forEach((item) => item.classList.toggle("is-active", item === tab));
-    renderBodyReport(Number(tab.dataset.reportDays));
+if (saveProfileButton) {
+  saveProfileButton.addEventListener("click", () => {
+    const nextProfile = {
+      ...activeProfile,
+      gender: profileInputs.gender.value,
+      age: Number(profileInputs.age.value || activeProfile.age),
+      heightCm: Number(profileInputs.heightCm.value || activeProfile.heightCm),
+      currentWeightKg: Number(profileInputs.currentWeightKg.value || activeProfile.currentWeightKg),
+      targetWeightKg: Number(profileInputs.targetWeightKg.value || activeProfile.targetWeightKg),
+      targetDays: Number(profileInputs.targetDays.value || activeProfile.targetDays),
+      activityLevel: profileInputs.activityLevel.value,
+    };
+    saveUserProfile(nextProfile);
+    renderProfileSummary();
+    renderDashboard();
+    setText("[data-profile-status]", "已保存");
   });
-});
+}

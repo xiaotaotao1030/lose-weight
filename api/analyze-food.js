@@ -16,21 +16,25 @@ function normalizeFoodAnalysis(data) {
     .map((food) => ({
       name: String(food.name || ""),
       quantity: String(food.quantity || "1份"),
+      estimatedWeight: String(food.estimatedWeight || "约常规份量"),
       calories: Number(food.calories || 0),
       protein: Number(food.protein || 0),
       carbs: Number(food.carbs || 0),
       fat: Number(food.fat || 0),
+      confidence: String(food.confidence || "中"),
     }));
-  const total = data.total || sumNutrition(foods);
+  const mealTotal = data.mealTotal || data.total || sumNutrition(foods);
 
   return {
+    mealName: data.mealName || "未分类饮食",
     foods,
-    total: {
-      calories: Number(total.calories || 0),
-      protein: Number(total.protein || 0),
-      carbs: Number(total.carbs || 0),
-      fat: Number(total.fat || 0),
+    mealTotal: {
+      calories: Number(mealTotal.calories || 0),
+      protein: Number(mealTotal.protein || 0),
+      carbs: Number(mealTotal.carbs || 0),
+      fat: Number(mealTotal.fat || 0),
     },
+    summary: data.summary || "本餐为估算值，可根据实际份量修改。",
   };
 }
 
@@ -77,7 +81,7 @@ module.exports = async function handler(request, response) {
           {
             role: "system",
             content:
-              "你是营养记录助手。请从中文饮食描述中识别所有可能食物，估算数量、热量、蛋白质、碳水和脂肪。无法确定重量时使用常见默认份量估算。只输出JSON，字段必须是foods和total。",
+              "你是营养记录助手。请从中文饮食描述中识别所有可能食物，不允许只返回第一个食物。把每个独立食物分开估算数量、重量、热量、蛋白质、碳水和脂肪。无法确定重量时使用常见默认份量估算，并在summary说明估算。根据描述判断mealName，只能是早餐、午餐、晚餐、加餐、饮品、未分类饮食。只输出JSON。",
           },
           {
             role: "user",
@@ -93,6 +97,10 @@ module.exports = async function handler(request, response) {
               type: "object",
               additionalProperties: false,
               properties: {
+                mealName: {
+                  type: "string",
+                  enum: ["早餐", "午餐", "晚餐", "加餐", "饮品", "未分类饮食"],
+                },
                 foods: {
                   type: "array",
                   items: {
@@ -101,15 +109,26 @@ module.exports = async function handler(request, response) {
                     properties: {
                       name: { type: "string" },
                       quantity: { type: "string" },
+                      estimatedWeight: { type: "string" },
                       calories: { type: "number" },
                       protein: { type: "number" },
                       carbs: { type: "number" },
                       fat: { type: "number" },
+                      confidence: { type: "string", enum: ["高", "中", "低"] },
                     },
-                    required: ["name", "quantity", "calories", "protein", "carbs", "fat"],
+                    required: [
+                      "name",
+                      "quantity",
+                      "estimatedWeight",
+                      "calories",
+                      "protein",
+                      "carbs",
+                      "fat",
+                      "confidence",
+                    ],
                   },
                 },
-                total: {
+                mealTotal: {
                   type: "object",
                   additionalProperties: false,
                   properties: {
@@ -120,8 +139,9 @@ module.exports = async function handler(request, response) {
                   },
                   required: ["calories", "protein", "carbs", "fat"],
                 },
+                summary: { type: "string" },
               },
-              required: ["foods", "total"],
+              required: ["mealName", "foods", "mealTotal", "summary"],
             },
           },
         },

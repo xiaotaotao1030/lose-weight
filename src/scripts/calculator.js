@@ -27,8 +27,8 @@ function roundTo(value, digits = 0) {
 function calculatePlan(profile) {
   const heightM = profile.heightCm / 100;
   const bmi = profile.currentWeightKg / (heightM * heightM);
-  const bmr =
-    10 * profile.currentWeightKg + 6.25 * profile.heightCm - 5 * profile.age - 161;
+  const genderOffset = profile.gender === "male" ? 5 : -161;
+  const bmr = 10 * profile.currentWeightKg + 6.25 * profile.heightCm - 5 * profile.age + genderOffset;
   const tdee = bmr * activityFactors[profile.activityLevel];
   const weightToLose = profile.currentWeightKg - profile.targetWeightKg;
   const targetDailyDeficit = (weightToLose * 7700) / profile.targetDays;
